@@ -1,53 +1,24 @@
 import React, { useState, useRef } from 'react';
 
 interface TimeRangeSelectorProps {
+  selectedDates?: string[];
   onComplete: (settings: any) => void;
 }
 
-const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({ onComplete }) => {
-  const [step, setStep] = useState<'date' | 'time'>('date');
-  const [selectedDates, setSelectedDates] = useState<string[]>([]);
+const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({ selectedDates = [], onComplete }) => {
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<Set<string>>(new Set());
   const [isDragging, setIsDragging] = useState(false);
   const [dragMode, setDragMode] = useState<'select' | 'deselect'>('select');
-  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentWeekStart, setCurrentWeekStart] = useState(new Date());
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // 현재 월의 날짜들 생성
-  const generateCalendarDays = () => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay());
-
-    const days = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    for (let i = 0; i < 42; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-      
-      const dateString = date.toISOString().split('T')[0];
-      const isCurrentMonth = date.getMonth() === month;
-      const isPast = date < today;
-      const isSelected = selectedDates.includes(dateString);
-
-      days.push({
-        date,
-        dateString,
-        isCurrentMonth,
-        isPast,
-        isSelected,
-        day: date.getDate()
-      });
+  // props로 받은 selectedDates 사용
+  React.useEffect(() => {
+    if (selectedDates.length > 0) {
+      const firstDate = new Date(selectedDates[0]);
+      setCurrentWeekStart(firstDate);
     }
-
-    return days;
-  };
+  }, [selectedDates]);
 
   // 주별 날짜 생성 (월요일 시작) - 선택된 날짜만
   const generateWeekDates = () => {
@@ -108,45 +79,6 @@ const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({ onComplete }) => 
     return slots;
   };
 
-  const handleDateClick = (dateString: string, isPast: boolean) => {
-    if (isPast) return;
-
-    setSelectedDates(prev => {
-      const newDates = prev.includes(dateString) 
-        ? prev.filter(d => d !== dateString)
-        : [...prev, dateString].sort();
-      
-      return newDates;
-    });
-  };
-
-  const handlePrevMonth = () => {
-    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1));
-  };
-
-  const handleDateStepComplete = () => {
-    if (selectedDates.length === 0) {
-      alert('최소 하나의 날짜를 선택해주세요.');
-      return;
-    }
-    
-    // 선택된 날짜 중 첫 번째 날짜가 포함된 주로 설정
-    const firstDate = new Date(selectedDates[0]);
-    setCurrentWeekStart(firstDate);
-    setStep('time');
-    // 시간 선택 초기화
-    setSelectedTimeSlots(new Set());
-  };
-
-  const handleBackToDateSelection = () => {
-    setStep('date');
-    setSelectedTimeSlots(new Set());
-  };
-
   const handlePrevWeek = () => {
     const newWeekStart = new Date(currentWeekStart);
     newWeekStart.setDate(newWeekStart.getDate() - 7);
@@ -161,7 +93,7 @@ const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({ onComplete }) => 
 
   // 날짜와 시간으로 슬롯 ID 생성
   const getSlotId = (dateString: string, timeString: string) => {
-    return `${dateString}-${timeString}`;
+    return `${dateString}|${timeString}`;
   };
 
   const handleMouseDown = (dateString: string, timeString: string) => {
@@ -225,11 +157,16 @@ const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({ onComplete }) => 
       return;
     }
 
+    console.log('TimeRangeSelector - selectedTimeSlots:', Array.from(selectedTimeSlots));
+
     // 날짜별로 시간대 그룹화
     const timeSlotsByDate: { [key: string]: string[] } = {};
     
     selectedTimeSlots.forEach(slotId => {
-      const [dateString, timeString] = slotId.split('-');
+      console.log('Processing slotId:', slotId);
+      const [dateString, timeString] = slotId.split('|');
+      console.log('Split result:', { dateString, timeString });
+      
       if (!timeSlotsByDate[dateString]) {
         timeSlotsByDate[dateString] = [];
       }
@@ -241,129 +178,30 @@ const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({ onComplete }) => 
       timeSlotsByDate[date].sort();
     });
 
-    onComplete({
+    console.log('TimeRangeSelector - Final timeSlotsByDate:', timeSlotsByDate);
+
+    const result = {
       type: 'time_range',
       selected_dates: selectedDates,
       time_slots_by_date: timeSlotsByDate,
       total_slots: selectedTimeSlots.size
-    });
+    };
+
+    console.log('TimeRangeSelector - Calling onComplete with:', result);
+    onComplete(result);
   };
 
-  const calendarDays = generateCalendarDays();
   const weekDates = generateWeekDates();
   const timeSlots = generateTimeSlots();
-  const monthNames = [
-    '1월', '2월', '3월', '4월', '5월', '6월',
-    '7월', '8월', '9월', '10월', '11월', '12월'
-  ];
-  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
 
-  // 날짜 선택 단계
-  if (step === 'date') {
+  if (selectedDates.length === 0) {
     return (
-      <div className="max-w-md mx-auto">
-        <div className="mb-6 text-center">
-          <p className="text-gray-600 mb-4">
-            시간 조율을 진행할 날짜들을 선택하세요.
-            <br />
-            선택된 날짜들에 대해 시간대별 조율이 가능합니다.
-          </p>
-          <div className="text-sm text-blue-600">
-            선택된 날짜: {selectedDates.length}개
-          </div>
-        </div>
-
-        {/* 캘린더 헤더 */}
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={handlePrevMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            ←
-          </button>
-          <h3 className="text-lg font-semibold">
-            {currentMonth.getFullYear()}년 {monthNames[currentMonth.getMonth()]}
-          </h3>
-          <button
-            onClick={handleNextMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            →
-          </button>
-        </div>
-
-        {/* 요일 헤더 */}
-        <div className="grid grid-cols-7 gap-1 mb-2">
-          {dayNames.map(day => (
-            <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
-              {day}
-            </div>
-          ))}
-        </div>
-
-        {/* 캘린더 그리드 */}
-        <div className="grid grid-cols-7 gap-1 mb-6">
-          {calendarDays.map((day, index) => (
-            <button
-              key={index}
-              onClick={() => handleDateClick(day.dateString, day.isPast)}
-              disabled={day.isPast}
-              className={`
-                aspect-square flex items-center justify-center text-sm rounded-lg transition-all
-                ${!day.isCurrentMonth 
-                  ? 'text-gray-300 cursor-default' 
-                  : day.isPast 
-                    ? 'text-gray-300 cursor-not-allowed' 
-                    : day.isSelected
-                      ? 'bg-green-500 text-white font-semibold shadow-md'
-                      : 'hover:bg-blue-100 text-gray-700'
-                }
-              `}
-            >
-              {day.day}
-            </button>
-          ))}
-        </div>
-
-        {/* 선택된 날짜 미리보기 */}
-        {selectedDates.length > 0 && (
-          <div className="mb-6 p-4 bg-green-50 rounded-lg">
-            <h4 className="font-medium text-green-800 mb-2">선택된 날짜들:</h4>
-            <div className="flex flex-wrap gap-2">
-              {selectedDates.map(dateString => (
-                <span
-                  key={dateString}
-                  className="px-2 py-1 bg-green-200 text-green-800 rounded text-sm"
-                >
-                  {new Date(dateString).toLocaleDateString('ko-KR', {
-                    month: 'short',
-                    day: 'numeric'
-                  })}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 다음 단계 버튼 */}
-        <button
-          onClick={handleDateStepComplete}
-          disabled={selectedDates.length === 0}
-          className={`
-            w-full py-3 px-6 rounded-lg font-semibold transition-colors
-            ${selectedDates.length > 0
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }
-          `}
-        >
-          다음: 시간대 선택 ({selectedDates.length}개 날짜)
-        </button>
+      <div className="text-center py-8 text-gray-500">
+        먼저 날짜를 선택해주세요.
       </div>
     );
   }
 
-  // 선택된 날짜가 있으면 시간 선택 그리드 표시
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-6 text-center">
@@ -375,12 +213,6 @@ const TimeRangeSelector: React.FC<TimeRangeSelectorProps> = ({ onComplete }) => 
         <div className="text-sm text-blue-600 mb-2">
           선택된 시간대: {selectedTimeSlots.size}개
         </div>
-        <button
-          onClick={handleBackToDateSelection}
-          className="text-sm text-gray-500 hover:text-gray-700"
-        >
-          ← 날짜 선택으로 돌아가기
-        </button>
       </div>
 
       {/* 주별 네비게이션 */}

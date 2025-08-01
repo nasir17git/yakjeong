@@ -129,19 +129,77 @@ const Results: React.FC = () => {
   const renderTimeSlotResponses = (responseData: any) => {
     if (!responseData) return <span className="text-gray-400">응답 없음</span>;
 
+    // 디버깅용 로그
+    console.log('renderTimeSlotResponses - responseData:', responseData);
+    console.log('renderTimeSlotResponses - room.room_type:', room.room_type);
+
     // 실제 응답 데이터 구조에 맞게 처리
     let availableItems: string[] = [];
 
     if (room.room_type === ROOM_TYPES.HOURLY) {
-      // 시간 기준 - available_times 배열에서 시간 추출
-      if (responseData.available_times && Array.isArray(responseData.available_times)) {
+      // 시간 기준 - available_time_slots Set/Array에서 시간 추출
+      console.log('Processing HOURLY type, available_time_slots:', responseData.available_time_slots);
+      
+      if (responseData.available_time_slots) {
+        let timeSlots: string[] = [];
+        
+        // Set이 빈 객체로 직렬화된 경우 처리
+        if (typeof responseData.available_time_slots === 'object' && 
+            !Array.isArray(responseData.available_time_slots) &&
+            Object.keys(responseData.available_time_slots).length === 0) {
+          console.log('Empty Set detected, no time slots available');
+          return <span className="text-gray-400">가능한 시간 없음</span>;
+        }
+        
+        if (Array.isArray(responseData.available_time_slots)) {
+          timeSlots = responseData.available_time_slots;
+        } else if (responseData.available_time_slots instanceof Set) {
+          timeSlots = Array.from(responseData.available_time_slots);
+        } else if (typeof responseData.available_time_slots === 'object') {
+          // 객체 형태인 경우 키를 추출
+          timeSlots = Object.keys(responseData.available_time_slots);
+        }
+
+        console.log('Extracted timeSlots:', timeSlots);
+
+        if (timeSlots.length === 0) {
+          return <span className="text-gray-400">가능한 시간 없음</span>;
+        }
+
+        // 날짜|시간 형태에서 시간만 추출하고 중복 제거
+        const uniqueTimes = new Set<string>();
+        timeSlots.forEach((slotId: string) => {
+          if (typeof slotId === 'string' && slotId.includes('|')) {
+            const [_, timeString] = slotId.split('|');
+            uniqueTimes.add(timeString);
+          } else if (typeof slotId === 'string') {
+            // 직접 시간 문자열인 경우
+            uniqueTimes.add(slotId);
+          }
+        });
+
+        console.log('Unique times:', Array.from(uniqueTimes));
+
+        availableItems = Array.from(uniqueTimes)
+          .sort()
+          .map((time: string) => {
+            // "07:00" 형태를 "7:00"로 변환
+            if (time.includes(':')) {
+              const [hour, minute] = time.split(':');
+              const hourNum = parseInt(hour);
+              return minute === '00' ? `${hourNum}시` : `${hourNum}:${minute}`;
+            }
+            return time;
+          })
+          .slice(0, 5); // 처음 5개만 표시
+      } else if (responseData.available_times && Array.isArray(responseData.available_times)) {
+        // 이전 구조 지원
         availableItems = responseData.available_times
           .map((time: string) => {
-            // "07:00" 형태를 "7시"로 변환
             const hour = parseInt(time.split(':')[0]);
             return `${hour}시`;
           })
-          .slice(0, 5); // 처음 5개만 표시
+          .slice(0, 5);
       } else if (typeof responseData === 'object') {
         // 기존 형태 {7: true, 8: true} 지원
         availableItems = Object.entries(responseData)
@@ -154,14 +212,16 @@ const Results: React.FC = () => {
         return <span className="text-gray-400">가능한 시간 없음</span>;
       }
 
-      const totalCount = responseData.available_times ? responseData.available_times.length : 
+      const totalCount = responseData.available_time_slots ? 
+                        (Array.isArray(responseData.available_time_slots) ? responseData.available_time_slots.length : responseData.available_time_slots.size) :
+                        responseData.available_times ? responseData.available_times.length : 
                         Object.keys(responseData).filter(hour => responseData[hour]).length;
 
       return (
         <div className="flex flex-wrap gap-1">
-          {availableItems.map((hour, index) => (
+          {availableItems.map((time, index) => (
             <span key={index} className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
-              {hour}
+              {time}
             </span>
           ))}
           {totalCount > 5 && (
@@ -206,11 +266,69 @@ const Results: React.FC = () => {
         </div>
       );
     } else if (room.room_type === ROOM_TYPES.BLOCK) {
-      // 블럭 기준
-      if (responseData.available_blocks && Array.isArray(responseData.available_blocks)) {
+      // 블럭 기준 - 새로운 데이터 구조 (available_block_slots) 지원
+      console.log('Processing BLOCK type, available_block_slots:', responseData.available_block_slots);
+      
+      if (responseData.available_block_slots) {
+        // Set이 빈 객체로 직렬화된 경우 처리
+        if (typeof responseData.available_block_slots === 'object' && 
+            !Array.isArray(responseData.available_block_slots) &&
+            Object.keys(responseData.available_block_slots).length === 0) {
+          console.log('Empty Set detected for blocks, no block slots available');
+          return <span className="text-gray-400">가능한 블럭 없음</span>;
+        }
+
+        let blockSlots: string[] = [];
+        
+        if (Array.isArray(responseData.available_block_slots)) {
+          blockSlots = responseData.available_block_slots;
+        } else if (typeof responseData.available_block_slots === 'object') {
+          // 객체 형태인 경우 키를 추출
+          blockSlots = Object.keys(responseData.available_block_slots);
+        }
+
+        console.log('Extracted blockSlots:', blockSlots);
+
+        if (blockSlots.length === 0) {
+          return <span className="text-gray-400">가능한 블럭 없음</span>;
+        }
+
+        // 새로운 구조: 날짜-블럭 조합 배열
+        const blockSlotMap = new Map<string, Set<string>>();
+        
+        blockSlots.forEach((slotId: string) => {
+          if (typeof slotId === 'string') {
+            // slotId 형태: "2025-08-09-movie_a_2" -> 마지막 '-'를 기준으로 분리
+            const lastDashIndex = slotId.lastIndexOf('-');
+            if (lastDashIndex > 0) {
+              const dateString = slotId.substring(0, lastDashIndex);
+              const blockId = slotId.substring(lastDashIndex + 1);
+              
+              if (!blockSlotMap.has(blockId)) {
+                blockSlotMap.set(blockId, new Set());
+              }
+              blockSlotMap.get(blockId)!.add(dateString);
+            }
+          }
+        });
+
+        console.log('Block slot map:', blockSlotMap);
+
+        availableItems = Array.from(blockSlotMap.keys())
+          .map((blockId: string) => {
+            const settings = room.settings;
+            if (settings && settings.time_blocks) {
+              const block = settings.time_blocks.find((b: any) => b.id === blockId);
+              const dates = blockSlotMap.get(blockId)!;
+              return block ? `${block.name} (${dates.size}일)` : `${blockId} (${dates.size}일)`;
+            }
+            return blockId;
+          })
+          .slice(0, 3);
+      } else if (responseData.available_blocks && Array.isArray(responseData.available_blocks)) {
+        // 이전 구조: 블럭 ID 배열
         availableItems = responseData.available_blocks
           .map((blockId: string) => {
-            // 블럭 이름 찾기
             const settings = room.settings;
             if (settings && settings.time_blocks) {
               const block = settings.time_blocks.find((b: any) => b.id === blockId);
@@ -220,6 +338,7 @@ const Results: React.FC = () => {
           })
           .slice(0, 3);
       } else if (typeof responseData === 'object') {
+        // 객체 형태의 이전 구조
         availableItems = Object.entries(responseData)
           .filter(([_, available]) => available)
           .map(([blockId, _]) => {
@@ -237,7 +356,8 @@ const Results: React.FC = () => {
         return <span className="text-gray-400">가능한 블럭 없음</span>;
       }
 
-      const totalCount = responseData.available_blocks ? responseData.available_blocks.length : 
+      const totalCount = responseData.available_block_slots ? responseData.available_block_slots.length : 
+                        responseData.available_blocks ? responseData.available_blocks.length :
                         Object.keys(responseData).filter(block => responseData[block]).length;
 
       return (

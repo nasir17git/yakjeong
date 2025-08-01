@@ -9,9 +9,12 @@ import BlockSelector from '../components/BlockSelector';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState<'select' | 'settings' | 'form'>('select');
+  const [currentStep, setCurrentStep] = useState<'select' | 'date' | 'time' | 'block' | 'block-grid' | 'form'>('select');
   const [selectedRoomType, setSelectedRoomType] = useState<number | null>(null);
-  const [roomSettings, setRoomSettings] = useState<any>(null);
+  const [dateSettings, setDateSettings] = useState<any>(null);
+  const [timeSettings, setTimeSettings] = useState<any>(null);
+  const [blockSettings, setBlockSettings] = useState<any>(null);
+  const [blockGridSettings, setBlockGridSettings] = useState<any>(null);
 
   // 방 제목 태그들
   const titleTags = ['팀 회의', '친목모임', '정기모임', '온라인미팅', '스터디', '회식', '그 외 모임'];
@@ -60,11 +63,42 @@ const Home: React.FC = () => {
   const handleRoomTypeSelect = (roomType: number) => {
     setSelectedRoomType(roomType);
     setFormData(prev => ({ ...prev, room_type: roomType }));
-    setCurrentStep('settings');
+    
+    // 날짜 기준 조율은 바로 날짜 설정으로, 나머지는 날짜 설정 단계로
+    if (roomType === ROOM_TYPES.DAILY) {
+      setCurrentStep('date');
+    } else {
+      setCurrentStep('date'); // 시간, 블럭 기준도 모두 날짜 설정부터 시작
+    }
   };
 
-  const handleSettingsComplete = (settings: any) => {
-    setRoomSettings(settings);
+  const handleDateSettingsComplete = (settings: any) => {
+    setDateSettings(settings);
+    
+    if (selectedRoomType === ROOM_TYPES.DAILY) {
+      // 날짜 기준은 바로 방 정보 입력으로
+      setCurrentStep('form');
+    } else if (selectedRoomType === ROOM_TYPES.HOURLY) {
+      // 시간 기준은 시간대 설정으로
+      setCurrentStep('time');
+    } else if (selectedRoomType === ROOM_TYPES.BLOCK) {
+      // 블럭 기준은 블럭 설정으로
+      setCurrentStep('block');
+    }
+  };
+
+  const handleTimeSettingsComplete = (settings: any) => {
+    setTimeSettings(settings);
+    setCurrentStep('form');
+  };
+
+  const handleBlockSettingsComplete = (settings: any) => {
+    setBlockSettings(settings);
+    setCurrentStep('block-grid');
+  };
+
+  const handleBlockGridSettingsComplete = (settings: any) => {
+    setBlockGridSettings(settings);
     setCurrentStep('form');
   };
 
@@ -89,16 +123,29 @@ const Home: React.FC = () => {
       return;
     }
 
+    // 최종 설정 데이터 조합
+    let finalSettings = null;
+    if (selectedRoomType === ROOM_TYPES.DAILY) {
+      finalSettings = dateSettings;
+    } else if (selectedRoomType === ROOM_TYPES.HOURLY) {
+      finalSettings = { ...dateSettings, ...timeSettings };
+    } else if (selectedRoomType === ROOM_TYPES.BLOCK) {
+      finalSettings = { ...dateSettings, ...blockSettings, ...blockGridSettings };
+    }
+
     createRoomMutation.mutate({
       ...formData,
-      settings: roomSettings,
+      settings: finalSettings,
     });
   };
 
   const resetForm = () => {
     setCurrentStep('select');
     setSelectedRoomType(null);
-    setRoomSettings(null);
+    setDateSettings(null);
+    setTimeSettings(null);
+    setBlockSettings(null);
+    setBlockGridSettings(null);
     setFormData({
       title: '팀 회의',
       description: generateDescription('팀 회의'),
@@ -109,8 +156,26 @@ const Home: React.FC = () => {
     });
   };
 
-  const goBackToSettings = () => {
-    setCurrentStep('settings');
+  const goBackToTimeSettings = () => {
+    setCurrentStep('time');
+  };
+
+  const goBackToBlockSettings = () => {
+    setCurrentStep('block');
+  };
+
+  const goBackToBlockGridSettings = () => {
+    setCurrentStep('block-grid');
+  };
+
+  const goBackToDateSettings = () => {
+    setCurrentStep('date');
+    if (selectedRoomType === ROOM_TYPES.HOURLY) {
+      setTimeSettings(null);
+    } else if (selectedRoomType === ROOM_TYPES.BLOCK) {
+      setBlockSettings(null);
+      setBlockGridSettings(null);
+    }
   };
 
   const goBackToSelect = () => {
@@ -125,7 +190,7 @@ const Home: React.FC = () => {
         {/* 헤더 섹션 */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            <span className="text-gray-900">약</span><span className="text-blue-600">속</span> <span className="text-gray-900">결</span><span className="text-blue-600">정</span>을 쉽고 빠르게
+            <span className="text-blue-600">약</span><span className="text-blue-400">속</span> <span className="text-blue-400">결</span><span className="text-blue-600">정</span>을 쉽고 빠르게
           </h1>
           <p className="text-xl text-gray-600 mb-8">
             참여자들의 가능한 시간을 수집하고 최적의 시간을 찾아보세요
@@ -269,15 +334,11 @@ const Home: React.FC = () => {
           )}
         </div>
 
-        {/* 2단계: 시간대 설정 */}
-        {currentStep === 'settings' && (
+        {/* 2단계: 날짜 설정 */}
+        {currentStep === 'date' && (
           <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                {selectedRoomType === ROOM_TYPES.DAILY && '📅 날짜 설정'}
-                {selectedRoomType === ROOM_TYPES.HOURLY && '⏰ 시간 설정'}
-                {selectedRoomType === ROOM_TYPES.BLOCK && '🎬 블럭 설정'}
-              </h2>
+              <h2 className="text-2xl font-bold text-gray-900">📅 날짜 설정</h2>
               <button
                 onClick={goBackToSelect}
                 className="text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100"
@@ -286,29 +347,17 @@ const Home: React.FC = () => {
               </button>
             </div>
 
-            {selectedRoomType === ROOM_TYPES.DAILY && (
-              <DateRangeSelector onComplete={handleSettingsComplete} />
-            )}
-            {selectedRoomType === ROOM_TYPES.HOURLY && (
-              <TimeRangeSelector onComplete={handleSettingsComplete} />
-            )}
-            {selectedRoomType === ROOM_TYPES.BLOCK && (
-              <BlockSelector onComplete={handleSettingsComplete} />
-            )}
+            <DateRangeSelector onComplete={handleDateSettingsComplete} />
           </div>
         )}
 
-        {/* 2단계 완료 상태 표시 */}
-        {currentStep === 'form' && roomSettings && (
+        {/* 날짜 설정 완료 상태 표시 */}
+        {(currentStep === 'time' || currentStep === 'block' || currentStep === 'block-grid' || currentStep === 'form') && dateSettings && (
           <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                ✅ {selectedRoomType === ROOM_TYPES.DAILY && '날짜 설정 완료'}
-                {selectedRoomType === ROOM_TYPES.HOURLY && '시간 설정 완료'}
-                {selectedRoomType === ROOM_TYPES.BLOCK && '블럭 설정 완료'}
-              </h2>
+              <h2 className="text-2xl font-bold text-gray-900">✅ 날짜 설정 완료</h2>
               <button
-                onClick={goBackToSettings}
+                onClick={goBackToDateSettings}
                 className="text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100"
               >
                 수정
@@ -316,54 +365,163 @@ const Home: React.FC = () => {
             </div>
 
             <div className="p-4 bg-gray-50 rounded-lg">
-              {selectedRoomType === ROOM_TYPES.DAILY && roomSettings.selected_dates && (
-                <div>
-                  <h4 className="font-medium text-gray-800 mb-2">선택된 날짜: {roomSettings.selected_dates.length}개</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {roomSettings.selected_dates.slice(0, 5).map((date: string) => (
-                      <span key={date} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm">
-                        {new Date(date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                      </span>
-                    ))}
-                    {roomSettings.selected_dates.length > 5 && (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-sm">
-                        +{roomSettings.selected_dates.length - 5}개
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
+              <h4 className="font-medium text-gray-800 mb-2">선택된 날짜: {dateSettings.selected_dates?.length || 0}개</h4>
+              <div className="flex flex-wrap gap-2">
+                {dateSettings.selected_dates?.slice(0, 5).map((date: string) => (
+                  <span key={date} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm">
+                    {new Date(date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                  </span>
+                ))}
+                {dateSettings.selected_dates?.length > 5 && (
+                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-sm">
+                    +{dateSettings.selected_dates.length - 5}개
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
-              {selectedRoomType === ROOM_TYPES.HOURLY && roomSettings.total_slots && (
-                <div>
-                  <h4 className="font-medium text-gray-800 mb-2">
-                    설정된 시간대: {roomSettings.total_slots}개
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    {roomSettings.selected_dates?.length}개 날짜에 대한 시간대별 조율이 설정되었습니다.
-                  </p>
-                </div>
-              )}
+        {/* 3단계: 시간대 설정 (시간 기준 조율만) */}
+        {currentStep === 'time' && (
+          <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">⏰ 시간대 설정</h2>
+              <button
+                onClick={goBackToDateSettings}
+                className="text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100"
+              >
+                ← 날짜 설정으로
+              </button>
+            </div>
 
-              {selectedRoomType === ROOM_TYPES.BLOCK && roomSettings.time_blocks && (
-                <div>
-                  <h4 className="font-medium text-gray-800 mb-2">
-                    설정된 블럭: {roomSettings.time_blocks.length}개
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {roomSettings.time_blocks.slice(0, 3).map((block: any) => (
-                      <span key={block.id} className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-sm">
-                        {block.name}
-                      </span>
-                    ))}
-                    {roomSettings.time_blocks.length > 3 && (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-sm">
-                        +{roomSettings.time_blocks.length - 3}개
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
+            <TimeRangeSelector 
+              selectedDates={dateSettings?.selected_dates || []}
+              onComplete={handleTimeSettingsComplete} 
+            />
+          </div>
+        )}
+
+        {/* 시간대 설정 완료 상태 표시 */}
+        {currentStep === 'form' && selectedRoomType === ROOM_TYPES.HOURLY && timeSettings && (
+          <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">✅ 시간대 설정 완료</h2>
+              <button
+                onClick={goBackToTimeSettings}
+                className="text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100"
+              >
+                수정
+              </button>
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-800 mb-2">
+                설정된 시간대: {timeSettings.total_slots || 0}개
+              </h4>
+              <p className="text-sm text-gray-600">
+                {dateSettings?.selected_dates?.length}개 날짜에 대한 시간대별 조율이 설정되었습니다.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* 3단계: 블럭 설정 (블럭 기준 조율만) */}
+        {currentStep === 'block' && (
+          <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">🎬 블럭 설정</h2>
+              <button
+                onClick={goBackToDateSettings}
+                className="text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100"
+              >
+                ← 날짜 설정으로
+              </button>
+            </div>
+
+            <BlockSelector 
+              step="block"
+              selectedDates={dateSettings?.selected_dates || []}
+              onComplete={handleBlockSettingsComplete} 
+            />
+          </div>
+        )}
+
+        {/* 블럭 설정 완료 상태 표시 */}
+        {(currentStep === 'block-grid' || currentStep === 'form') && selectedRoomType === ROOM_TYPES.BLOCK && blockSettings && (
+          <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">✅ 블럭 설정 완료</h2>
+              <button
+                onClick={goBackToBlockSettings}
+                className="text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100"
+              >
+                수정
+              </button>
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-800 mb-2">
+                설정된 블럭: {blockSettings.time_blocks?.length || 0}개
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {blockSettings.time_blocks?.slice(0, 3).map((block: any) => (
+                  <span key={block.id} className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-sm">
+                    {block.name}
+                  </span>
+                ))}
+                {blockSettings.time_blocks?.length > 3 && (
+                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-sm">
+                    +{blockSettings.time_blocks.length - 3}개
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 4단계: 날짜별 블럭 선택 (블럭 기준 조율만) */}
+        {currentStep === 'block-grid' && (
+          <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">📋 날짜별 블럭 선택</h2>
+              <button
+                onClick={goBackToBlockSettings}
+                className="text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100"
+              >
+                ← 블럭 설정으로
+              </button>
+            </div>
+
+            <BlockSelector 
+              step="grid"
+              selectedDates={dateSettings?.selected_dates || []}
+              blocks={blockSettings?.time_blocks || []}
+              onComplete={handleBlockGridSettingsComplete} 
+            />
+          </div>
+        )}
+
+        {/* 날짜별 블럭 선택 완료 상태 표시 */}
+        {currentStep === 'form' && selectedRoomType === ROOM_TYPES.BLOCK && blockGridSettings && (
+          <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">✅ 날짜별 블럭 선택 완료</h2>
+              <button
+                onClick={goBackToBlockGridSettings}
+                className="text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100"
+              >
+                수정
+              </button>
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-800 mb-2">
+                선택된 블럭 슬롯: {Object.values(blockGridSettings.block_slots_by_date || {}).flat().length}개
+              </h4>
+              <p className="text-sm text-gray-600">
+                각 날짜별로 참여자가 선택할 수 있는 블럭들이 설정되었습니다.
+              </p>
             </div>
           </div>
         )}
@@ -374,10 +532,18 @@ const Home: React.FC = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">방 정보 입력</h2>
               <button
-                onClick={goBackToSettings}
+                onClick={() => {
+                  if (selectedRoomType === ROOM_TYPES.DAILY) {
+                    goBackToDateSettings();
+                  } else if (selectedRoomType === ROOM_TYPES.HOURLY) {
+                    goBackToTimeSettings();
+                  } else if (selectedRoomType === ROOM_TYPES.BLOCK) {
+                    goBackToBlockGridSettings();
+                  }
+                }}
                 className="text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100"
               >
-                ← 시간 설정으로
+                ← 이전 단계로
               </button>
             </div>
 
