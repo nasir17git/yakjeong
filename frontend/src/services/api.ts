@@ -46,11 +46,6 @@ export const roomApi = {
     return response.data;
   },
 
-  async getRooms(): Promise<Room[]> {
-    const response = await api.get('/rooms/');
-    return response.data;
-  },
-
   async getRoom(roomId: string): Promise<Room> {
     const response = await api.get(`/rooms/${roomId}`);
     return response.data;
@@ -112,6 +107,11 @@ export const responseApi = {
 
   async updateResponse(responseId: string, responseData: { response_data: Record<string, any> }): Promise<Response> {
     const response = await api.put(`/responses/${responseId}`, responseData);
+    return response.data;
+  },
+
+  async activateResponse(responseId: string): Promise<Response> {
+    const response = await api.put(`/responses/${responseId}/activate`);
     return response.data;
   },
 

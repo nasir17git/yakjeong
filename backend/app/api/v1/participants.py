@@ -10,7 +10,7 @@ router = APIRouter()
 
 @router.post("/", response_model=ParticipantResponse, status_code=status.HTTP_201_CREATED)
 async def create_participant(participant_data: ParticipantCreate, db: Session = Depends(get_db)):
-    """새로운 참여자 생성"""
+    """새로운 참여자 생성 또는 기존 참여자 반환"""
     # 방 존재 확인
     room = db.query(Room).filter(Room.id == participant_data.room_id, Room.is_active == True).first()
     if not room:
@@ -19,32 +19,22 @@ async def create_participant(participant_data: ParticipantCreate, db: Session = 
             detail="Room not found"
         )
     
-    # 같은 방에서 이름 중복 확인
+    # 같은 방에서 같은 이름의 참여자가 있는지 확인
     existing_participant = db.query(Participant).filter(
         Participant.room_id == participant_data.room_id,
         Participant.name == participant_data.name
     ).first()
     
     if existing_participant:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Participant name already exists in this room"
-        )
-    
-    # 최대 참여자 수 확인
-    if room.max_participants:
-        current_count = db.query(Participant).filter(Participant.room_id == participant_data.room_id).count()
-        if current_count >= room.max_participants:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Room is full"
-            )
-    
-    participant = Participant(**participant_data.dict())
-    db.add(participant)
-    db.commit()
-    db.refresh(participant)
-    return participant
+        # 기존 참여자 반환 (새로운 응답을 위해)
+        return existing_participant
+    else:
+        # 새로운 참여자 생성
+        participant = Participant(**participant_data.dict())
+        db.add(participant)
+        db.commit()
+        db.refresh(participant)
+        return participant
 
 @router.get("/room/{room_id}", response_model=List[ParticipantResponse])
 async def get_participants_by_room(room_id: str, db: Session = Depends(get_db)):

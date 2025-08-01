@@ -11,14 +11,15 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 데이터 디렉토리 생성
-RUN mkdir -p /app/data
+# 데이터 디렉토리 생성 및 권한 설정
+RUN mkdir -p /app/data && chmod 755 /app/data
 
 # 애플리케이션 코드 복사
 COPY . .
 
 # 환경 변수 설정
 ENV PYTHONPATH=/app
+ENV DATABASE_URL=sqlite:///./data/yakjeong.db
 
 EXPOSE 8000
 

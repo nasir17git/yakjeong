@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Any, Dict, List
 from datetime import datetime
 
@@ -12,14 +12,14 @@ class ResponseUpdate(BaseModel):
     response_data: Dict[str, Any]
 
 class ResponseResponse(ResponseBase):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: str
     participant_id: str
     version: int
+    is_active: bool
     created_at: datetime
     updated_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 class OptimalTimeSlot(BaseModel):
     time_slot: str

@@ -1,24 +1,29 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import engine
+
+# 데이터베이스 및 모델 import
+from app.database import engine, Base
+
+# 모델들을 먼저 import (테이블 생성을 위해)
 from app.models import room, participant, response
+
+# API 라우터 import
 from app.api.v1 import rooms, participants, responses
 
 # 데이터베이스 테이블 생성
-room.Base.metadata.create_all(bind=engine)
-participant.Base.metadata.create_all(bind=engine)
-response.Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Yakjeong API",
-    description="일정 조율 서비스 API",
+    title="YakJeong API",
+    description="약속 결정 서비스 API",
     version="1.0.0"
 )
 
-# CORS 설정
+# CORS 설정 - 개발 환경용
+# 프로덕션에서는 실제 도메인으로 변경 필요
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # 프로덕션에서 변경 필요
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,7 +36,7 @@ app.include_router(responses.router, prefix="/api/v1/responses", tags=["response
 
 @app.get("/")
 async def root():
-    return {"message": "Yakjeong API Server"}
+    return {"message": "YakJeong API Server"}
 
 @app.get("/health")
 async def health_check():

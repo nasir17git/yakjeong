@@ -1,45 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { roomApi } from '../services/api';
-import { Room } from '../types';
-import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
 
 const Home: React.FC = () => {
-  const { data: rooms, isLoading, error } = useQuery({
-    queryKey: ['rooms'],
-    queryFn: roomApi.getRooms,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <div className="text-red-600 mb-4">방 목록을 불러오는데 실패했습니다.</div>
-        <button 
-          onClick={() => window.location.reload()} 
-          className="btn-primary"
-        >
-          다시 시도
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div>
       {/* Hero Section */}
       <div className="text-center py-12 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg mb-8">
         <h1 className="text-4xl font-bold mb-4">
-          일정 조율을 쉽고 빠르게
+          <span className="font-extrabold">약</span>속 결<span className="font-extrabold">정</span>을 쉽고 빠르게
         </h1>
         <p className="text-xl mb-8 opacity-90">
           참여자들의 가능한 시간을 수집하고 최적의 시간을 찾아보세요
@@ -68,61 +36,55 @@ const Home: React.FC = () => {
         </div>
       </div>
 
-      {/* Recent Rooms */}
-      <div>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">최근 생성된 방</h2>
-          <Link to="/create" className="btn-primary">
-            새 방 만들기
-          </Link>
+      {/* How to Use */}
+      <div className="card mb-8">
+        <h2 className="text-2xl font-bold mb-6 text-center">사용 방법</h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="text-center">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-blue-600 font-bold text-lg">1</span>
+            </div>
+            <h3 className="font-semibold mb-2">방 만들기</h3>
+            <p className="text-gray-600 text-sm">
+              새 방을 만들고 조율 방식을 선택하세요. 
+              방이 생성되면 고유한 링크가 제공됩니다.
+            </p>
+          </div>
+          <div className="text-center">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-green-600 font-bold text-lg">2</span>
+            </div>
+            <h3 className="font-semibold mb-2">링크 공유</h3>
+            <p className="text-gray-600 text-sm">
+              생성된 방의 링크를 참여자들에게 공유하세요.
+              각자 편한 시간에 응답할 수 있습니다.
+            </p>
+          </div>
+          <div className="text-center">
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-purple-600 font-bold text-lg">3</span>
+            </div>
+            <h3 className="font-semibold mb-2">결과 확인</h3>
+            <p className="text-gray-600 text-sm">
+              모든 응답이 수집되면 최적의 시간대를 
+              자동으로 계산하여 보여드립니다.
+            </p>
+          </div>
         </div>
+      </div>
 
-        {rooms && rooms.length > 0 ? (
-          <div className="grid gap-4">
-            {rooms.slice(0, 5).map((room: Room) => (
-              <div key={room.id} className="card hover:shadow-lg transition-shadow">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold mb-2">{room.title}</h3>
-                    {room.description && (
-                      <p className="text-gray-600 mb-2">{room.description}</p>
-                    )}
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <span>생성자: {room.creator_name}</span>
-                      <span>
-                        생성일: {format(new Date(room.created_at), 'yyyy년 MM월 dd일', { locale: ko })}
-                      </span>
-                      <span>
-                        유형: {room.room_type === 1 ? '시간 기준' : room.room_type === 2 ? '블럭 기준' : '날짜 기준'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Link
-                      to={`/room/${room.id}`}
-                      className="btn-primary"
-                    >
-                      보기
-                    </Link>
-                    <Link
-                      to={`/room/${room.id}/participate`}
-                      className="btn-secondary"
-                    >
-                      참여하기
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
+      {/* Privacy Notice */}
+      <div className="card bg-blue-50 border-blue-200">
+        <div className="flex items-start space-x-3">
+          <div className="text-blue-600 text-xl">🔒</div>
+          <div>
+            <h3 className="font-semibold text-blue-900 mb-2">개인정보 보호</h3>
+            <p className="text-blue-800 text-sm">
+              모든 방은 고유한 링크를 통해서만 접근할 수 있습니다. 
+              링크를 알지 못하면 방에 접근할 수 없어 개인정보가 안전하게 보호됩니다.
+            </p>
           </div>
-        ) : (
-          <div className="text-center py-12 bg-gray-100 rounded-lg">
-            <div className="text-gray-500 mb-4">아직 생성된 방이 없습니다.</div>
-            <Link to="/create" className="btn-primary">
-              첫 번째 방 만들기
-            </Link>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

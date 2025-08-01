@@ -2,7 +2,7 @@ import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { roomApi, participantApi } from '../services/api';
-import { ROOM_TYPE_LABELS } from '../types';
+import { ROOM_TYPE_LABELS, ROOM_TYPES, TimeBlock } from '../types';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -85,12 +85,6 @@ const RoomDetail: React.FC = () => {
                 <span className="text-gray-600">생성일:</span>
                 <span>{format(new Date(room.created_at), 'yyyy년 MM월 dd일 HH:mm', { locale: ko })}</span>
               </div>
-              {room.max_participants && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">최대 참여자:</span>
-                  <span>{room.max_participants}명</span>
-                </div>
-              )}
               {room.deadline && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">응답 마감일:</span>
@@ -110,14 +104,6 @@ const RoomDetail: React.FC = () => {
                 <span className="text-gray-600">현재 참여자:</span>
                 <span>{participants?.length || 0}명</span>
               </div>
-              {room.max_participants && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">참여율:</span>
-                  <span>
-                    {Math.round(((participants?.length || 0) / room.max_participants) * 100)}%
-                  </span>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -130,6 +116,34 @@ const RoomDetail: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* 블럭 기준일 때 시간 블럭 정보 표시 */}
+      {room.room_type === ROOM_TYPES.BLOCK && room.settings?.time_blocks && (
+        <div className="card mb-8">
+          <h2 className="text-xl font-bold mb-4">시간 블럭 정보</h2>
+          <div className="grid gap-3">
+            {room.settings.time_blocks.map((block: TimeBlock, index: number) => (
+              <div key={block.id} className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="font-semibold text-lg">{block.name}</div>
+                    <div className="text-gray-600 mt-1">{block.time_range}</div>
+                    {block.memo && (
+                      <div className="text-gray-500 text-sm mt-2">{block.memo}</div>
+                    )}
+                  </div>
+                  <div className="text-gray-400 font-bold text-lg">
+                    {index + 1}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-gray-500 mt-3">
+            참여자들은 위 시간 블럭 중에서 가능한 시간을 선택할 수 있습니다.
+          </p>
+        </div>
+      )}
 
       {/* 참여자 목록 */}
       <div className="card">
@@ -161,25 +175,53 @@ const RoomDetail: React.FC = () => {
       {/* 공유 링크 */}
       <div className="card mt-6">
         <h3 className="font-semibold mb-3">방 공유하기</h3>
-        <div className="flex space-x-2">
-          <input
-            type="text"
-            value={window.location.href}
-            readOnly
-            className="input-field flex-1"
-          />
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(window.location.href);
-              alert('링크가 복사되었습니다!');
-            }}
-            className="btn-secondary"
-          >
-            복사
-          </button>
+        <div className="space-y-3">
+          {/* 참여 링크 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">참여 링크</label>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={`${window.location.origin}/room/${room.id}/participate`}
+                readOnly
+                className="input-field flex-1 text-sm"
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/room/${room.id}/participate`);
+                  alert('참여 링크가 복사되었습니다!');
+                }}
+                className="btn-secondary"
+              >
+                복사
+              </button>
+            </div>
+          </div>
+          
+          {/* 결과 링크 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">결과 링크</label>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={`${window.location.origin}/room/${room.id}/results`}
+                readOnly
+                className="input-field flex-1 text-sm"
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/room/${room.id}/results`);
+                  alert('결과 링크가 복사되었습니다!');
+                }}
+                className="btn-secondary"
+              >
+                복사
+              </button>
+            </div>
+          </div>
         </div>
-        <p className="text-sm text-gray-500 mt-2">
-          이 링크를 공유하여 다른 사람들을 초대하세요.
+        <p className="text-sm text-gray-500 mt-3">
+          이 링크들을 공유하여 다른 사람들을 초대하세요.
         </p>
       </div>
     </div>

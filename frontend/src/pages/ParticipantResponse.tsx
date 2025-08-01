@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { roomApi, participantApi, responseApi } from '../services/api';
-import { ROOM_TYPES } from '../types';
+import { ROOM_TYPES, TimeBlock, DEFAULT_TIME_BLOCKS } from '../types';
 
 const ParticipantResponse: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -163,39 +163,52 @@ const ParticipantResponse: React.FC = () => {
   };
 
   const renderBlockSelection = () => {
-    const blocks = [
-      { id: 'morning', label: '오전 (09:00-12:00)', value: '09:00-12:00' },
-      { id: 'afternoon', label: '오후 (13:00-18:00)', value: '13:00-18:00' },
-      { id: 'evening', label: '저녁 (19:00-22:00)', value: '19:00-22:00' },
-    ];
+    // 방 설정에서 시간 블럭 가져오기
+    let timeBlocks: TimeBlock[] = DEFAULT_TIME_BLOCKS;
+    
+    if (room?.settings?.time_blocks) {
+      timeBlocks = room.settings.time_blocks;
+    }
+
     const selectedBlocks = responseData.available_blocks || [];
 
     return (
       <div>
         <h3 className="text-lg font-semibold mb-4">가능한 시간 블럭을 선택하세요</h3>
         <div className="space-y-3">
-          {blocks.map(block => (
+          {timeBlocks.map(block => (
             <button
               key={block.id}
               type="button"
               onClick={() => {
-                const isSelected = selectedBlocks.some((b: any) => b.time_range === block.value);
+                const isSelected = selectedBlocks.includes(block.id);
                 const newBlocks = isSelected
-                  ? selectedBlocks.filter((b: any) => b.time_range !== block.value)
-                  : [...selectedBlocks, { time_range: block.value, date: new Date().toISOString().split('T')[0] }];
+                  ? selectedBlocks.filter((b: string) => b !== block.id)
+                  : [...selectedBlocks, block.id];
                 setResponseData({ ...responseData, available_blocks: newBlocks });
               }}
-              className={`w-full p-4 text-left rounded-lg border ${
-                selectedBlocks.some((b: any) => b.time_range === block.value)
+              className={`w-full p-4 text-left rounded-lg border transition-colors ${
+                selectedBlocks.includes(block.id)
                   ? 'bg-blue-50 border-blue-300 text-blue-700'
                   : 'bg-white border-gray-300 hover:bg-gray-50'
               }`}
             >
-              <div className="font-medium">{block.label}</div>
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="font-medium text-lg">{block.name}</div>
+                  <div className="text-sm text-gray-600 mt-1">{block.time_range}</div>
+                  {block.memo && (
+                    <div className="text-sm text-gray-500 mt-2">{block.memo}</div>
+                  )}
+                </div>
+                {selectedBlocks.includes(block.id) && (
+                  <div className="text-blue-600 text-xl">✓</div>
+                )}
+              </div>
             </button>
           ))}
         </div>
-        <p className="text-sm text-gray-500 mt-2">
+        <p className="text-sm text-gray-500 mt-4">
           선택된 블럭: {selectedBlocks.length}개
         </p>
       </div>
@@ -244,6 +257,9 @@ const ParticipantResponse: React.FC = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">{room.title}</h1>
         <p className="text-gray-600">일정 조율에 참여해주세요.</p>
+        {room.description && (
+          <p className="text-gray-500 text-sm mt-2">{room.description}</p>
+        )}
       </div>
 
       {step === 'name' ? (

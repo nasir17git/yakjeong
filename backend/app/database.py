@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 import os
 
 # 로컬 개발용 SQLite 데이터베이스 사용
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./yakjeong.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data/yakjeong.db")
 
 engine = create_engine(
     DATABASE_URL,

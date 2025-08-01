@@ -16,9 +16,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link to="/" className="text-2xl font-bold text-blue-600">
-                Yakjeong
+                YakJeong
               </Link>
-              <span className="ml-2 text-sm text-gray-500">일정 조율 서비스</span>
+              <span className="ml-2 text-sm text-gray-500">
+                <span className="font-bold">약</span>속 결<span className="font-bold">정</span> 서비스
+              </span>
             </div>
             
             <nav className="flex space-x-4">
@@ -56,7 +58,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <footer className="bg-white border-t mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="text-center text-sm text-gray-500">
-            © 2024 Yakjeong. 일정 조율을 쉽고 빠르게.
+            © 2025 YakJeong. 이 약정은 위약금도 없고 스트레스도 없습니다.
           </div>
         </div>
       </footer>

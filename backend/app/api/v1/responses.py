@@ -5,7 +5,6 @@ from app.database import get_db
 from app.models.response import Response
 from app.models.participant import Participant
 from app.schemas.response import ResponseCreate, ResponseUpdate, ResponseResponse
-import json
 
 router = APIRouter()
 
@@ -20,28 +19,24 @@ async def create_response(response_data: ResponseCreate, db: Session = Depends(g
             detail="Participant not found"
         )
     
-    # 기존 응답이 있는지 확인
-    existing_response = db.query(Response).filter(
+    # 기존 응답이 있는지 확인하고 버전 번호 결정
+    existing_responses = db.query(Response).filter(
         Response.participant_id == response_data.participant_id
-    ).first()
+    ).all()
     
-    if existing_response:
-        # 기존 응답 업데이트
-        existing_response.response_data = json.dumps(response_data.response_data)
-        existing_response.version += 1
-        db.commit()
-        db.refresh(existing_response)
-        return existing_response
-    else:
-        # 새로운 응답 생성
-        response = Response(
-            participant_id=response_data.participant_id,
-            response_data=json.dumps(response_data.response_data)
-        )
-        db.add(response)
-        db.commit()
-        db.refresh(response)
-        return response
+    # 다음 버전 번호 계산
+    next_version = max([r.version for r in existing_responses], default=0) + 1
+    
+    # 항상 새로운 응답 생성 (기존 응답 업데이트하지 않음)
+    response = Response(
+        participant_id=response_data.participant_id,
+        response_data=response_data.response_data,
+        version=next_version
+    )
+    db.add(response)
+    db.commit()
+    db.refresh(response)
+    return response
 
 @router.get("/participant/{participant_id}", response_model=List[ResponseResponse])
 async def get_responses_by_participant(participant_id: str, db: Session = Depends(get_db)):
@@ -57,13 +52,6 @@ async def get_responses_by_participant(participant_id: str, db: Session = Depend
         Response.participant_id == participant_id
     ).order_by(Response.created_at.desc()).all()
     
-    # JSON 문자열을 파이썬 객체로 변환
-    for response in responses:
-        try:
-            response.response_data = json.loads(response.response_data)
-        except:
-            response.response_data = {}
-    
     return responses
 
 @router.get("/{response_id}", response_model=ResponseResponse)
@@ -75,12 +63,6 @@ async def get_response(response_id: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Response not found"
         )
-    
-    # JSON 문자열을 파이썬 객체로 변환
-    try:
-        response.response_data = json.loads(response.response_data)
-    except:
-        response.response_data = {}
     
     return response
 
@@ -94,16 +76,32 @@ async def update_response(response_id: str, response_update: ResponseUpdate, db:
             detail="Response not found"
         )
     
-    response.response_data = json.dumps(response_update.response_data)
+    response.response_data = response_update.response_data
     response.version += 1
     db.commit()
     db.refresh(response)
     
-    # JSON 문자열을 파이썬 객체로 변환하여 반환
-    try:
-        response.response_data = json.loads(response.response_data)
-    except:
-        response.response_data = {}
+    return response
+
+@router.put("/{response_id}/activate", response_model=ResponseResponse)
+async def activate_response(response_id: str, db: Session = Depends(get_db)):
+    """특정 응답을 활성화 (해당 참여자의 다른 응답들은 비활성화)"""
+    response = db.query(Response).filter(Response.id == response_id).first()
+    if not response:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Response not found"
+        )
+    
+    # 해당 참여자의 모든 응답을 비활성화
+    db.query(Response).filter(
+        Response.participant_id == response.participant_id
+    ).update({"is_active": False})
+    
+    # 선택된 응답만 활성화
+    response.is_active = True
+    db.commit()
+    db.refresh(response)
     
     return response
 
