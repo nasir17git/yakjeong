@@ -83,6 +83,30 @@ const ParticipantResponse: React.FC = () => {
     return (
       <div>
         <h3 className="text-lg font-semibold mb-4">가능한 시간대를 선택하세요</h3>
+        
+        {/* 모두 선택/해제 버튼 */}
+        <div className="flex justify-center space-x-4 mb-4">
+          <button
+            type="button"
+            onClick={() => {
+              const allTimes = hours.map(hour => `${hour.toString().padStart(2, '0')}:00`);
+              setResponseData({ ...responseData, available_times: allTimes });
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+          >
+            모두 선택
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setResponseData({ ...responseData, available_times: [] });
+            }}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+          >
+            모두 해제
+          </button>
+        </div>
+
         <div className="grid grid-cols-6 gap-2">
           {hours.map(hour => (
             <button
@@ -105,9 +129,23 @@ const ParticipantResponse: React.FC = () => {
             </button>
           ))}
         </div>
-        <p className="text-sm text-gray-500 mt-2">
-          선택된 시간: {selectedTimes.length}개
-        </p>
+        
+        {/* 선택된 시간 모두 표시 */}
+        {selectedTimes.length > 0 && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <h4 className="font-medium text-blue-800 mb-2">선택된 시간: {selectedTimes.length}개</h4>
+            <div className="flex flex-wrap gap-2">
+              {selectedTimes.sort().map((time: string) => (
+                <span
+                  key={time}
+                  className="px-2 py-1 bg-blue-200 text-blue-800 rounded text-sm"
+                >
+                  {time}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -155,9 +193,27 @@ const ParticipantResponse: React.FC = () => {
             );
           })}
         </div>
-        <p className="text-sm text-gray-500 mt-2">
-          선택된 날짜: {selectedDates.length}개
-        </p>
+        
+        {/* 선택된 날짜 모두 표시 */}
+        {selectedDates.length > 0 && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <h4 className="font-medium text-blue-800 mb-2">선택된 날짜: {selectedDates.length}개</h4>
+            <div className="flex flex-wrap gap-2">
+              {selectedDates.sort().map((dateStr: string) => (
+                <span
+                  key={dateStr}
+                  className="px-2 py-1 bg-blue-200 text-blue-800 rounded text-sm"
+                >
+                  {new Date(dateStr).toLocaleDateString('ko-KR', {
+                    month: 'short',
+                    day: 'numeric',
+                    weekday: 'short'
+                  })}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -208,9 +264,28 @@ const ParticipantResponse: React.FC = () => {
             </button>
           ))}
         </div>
-        <p className="text-sm text-gray-500 mt-4">
-          선택된 블럭: {selectedBlocks.length}개
-        </p>
+        
+        {/* 선택된 블럭 모두 표시 */}
+        {selectedBlocks.length > 0 && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <h4 className="font-medium text-blue-800 mb-2">선택된 블럭: {selectedBlocks.length}개</h4>
+            <div className="space-y-2">
+              {selectedBlocks.map((blockId: string) => {
+                const block = timeBlocks.find(b => b.id === blockId);
+                if (!block) return null;
+                return (
+                  <div key={blockId} className="p-2 bg-blue-200 rounded text-sm">
+                    <div className="font-medium text-blue-900">{block.name}</div>
+                    <div className="text-blue-700">{block.time_range}</div>
+                    {block.memo && (
+                      <div className="text-blue-600 text-xs">{block.memo}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   };

@@ -19,7 +19,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 YakJeong
               </Link>
               <span className="ml-2 text-sm text-gray-500">
-                <span className="font-bold">약</span>속 결<span className="font-bold">정</span> 서비스
+                <span className="text-blue-800 font-bold">약</span>속 결<span className="text-blue-800 font-bold">정</span> 서비스
               </span>
             </div>
             
@@ -35,14 +35,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 홈
               </Link>
               <Link
-                to="/create"
+                to="/faq"
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  location.pathname === '/create'
+                  location.pathname === '/faq'
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                 }`}
               >
-                방 만들기
+                FAQ
               </Link>
             </nav>
           </div>

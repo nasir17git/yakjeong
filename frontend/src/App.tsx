@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Home from './pages/Home';
-import CreateRoom from './pages/CreateRoom';
+import FAQ from './pages/FAQ';
 import RoomDetail from './pages/RoomDetail';
 import ParticipantResponse from './pages/ParticipantResponse';
 import Results from './pages/Results';
@@ -25,7 +25,7 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/create" element={<CreateRoom />} />
+            <Route path="/faq" element={<FAQ />} />
             <Route path="/room/:id" element={<RoomDetail />} />
             <Route path="/room/:id/participate" element={<ParticipantResponse />} />
             <Route path="/room/:id/results" element={<Results />} />
